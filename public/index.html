@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Daily Digest Bot — Quản Lý & Đẩy Thông Báo Tự Động</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            tg: {
+              blue: '#24A1DE',
+              dark: '#17212b',
+              bubble: '#182533'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #0b1120;
+      color: #e2e8f0;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .tg-preview a {
+      color: #38bdf8;
+      text-decoration: underline;
+    }
+    .tg-preview code {
+      background: rgba(15, 23, 42, 0.75);
+      color: #fbbf24;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-14">
+  <!-- Header -->
+  <header class="sticky top-0 z-30 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 text-xl">
+          ✈️
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            Telegram Daily Digest Bot
+            <span id="scheduleBadge" class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              ⏰ Hẹn giờ: 07:30
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400">
+            Thời tiết hôm nay • Xổ số miền Bắc • Con số may mắn • Giá Bitcoin • Tin thế giới
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button
+          id="btnRefreshPreview"
+          onclick="loadPreview(true)"
+          class="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
+        >
+          <span>🔄</span> Làm mới dữ liệu
+        </button>
+
+        <button
+          id="btnSendAll"
+          onclick="sendSection('all')"
+          class="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-lg shadow-sky-500/25 transition flex items-center gap-1.5"
+        >
+          <span>🚀</span> Đẩy toàn bộ bản tin qua Telegram
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+    <!-- Top Section: Telegram Setup + Live Telegram Bubble Preview -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left: Config Panel (7 cols) -->
+      <div class="lg:col-span-7 glass-card rounded-2xl p-5 space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              ⚙️ Cấu hình Bot Telegram & Lịch hẹn giờ
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Tạo bot qua <b>@BotFather</b>, dán Token và nhấn "Tự động lấy Chat ID" sau khi nhắn <code>/start</code> cho Bot.
+            </p>
+          </div>
+          <span id="botStatusPill" class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+            Chưa kiểm tra
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Bot Token -->
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              Telegram Bot Token (từ @BotFather)
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="inputBotToken"
+                type="password"
+                placeholder="Ví dụ: 7123456789:AAHxyz..."
+                class="flex-1 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+              />
+              <button
+                type="button"
+                onclick="toggleTokenVisibility()"
+                class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700"
+                title="Hiện/Ẩn Token"
+              >
+                👁️
+              </button>
+              <button
+                type="button"
+                onclick="verifyBotToken()"
+                class="px-3.5 py-2 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-medium whitespace-nowrap"
+              >
+                Kiểm tra Bot
+              </button>
+            </div>
+          </div>
+
+          <!-- Chat ID -->
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              Telegram Chat ID (Cá nhân, Nhóm hoặc Channel)
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="inputChatId"
+                type="text"
+                placeholder="Ví dụ: 123456789 hoặc -100123456789"
+                class="flex-1 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+              />
+              <button
+                type="button"
+                onclick="detectChatId()"
+                class="px-3.5 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-medium whitespace-nowrap"
+              >
+                🔍 Tự động dò Chat ID
+              </button>
+            </div>
+            <div id="detectedChatsBox" class="hidden mt-2 p-2.5 rounded-lg bg-slate-900/80 border border-slate-700 text-xs space-y-1.5"></div>
+          </div>
+
+          <!-- Schedule Time -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              Giờ tự động gửi hàng ngày (GMT+7)
+            </label>
+            <div class="flex items-center gap-3">
+              <input
+                id="inputScheduleTime"
+                type="time"
+                value="07:30"
+                class="bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+              />
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input id="chkScheduleEnabled" type="checkbox" checked class="rounded text-sky-500 focus:ring-0" />
+                <span>Bật tự động gửi</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Interactive Bot Commands -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              Phản hồi lệnh chat trực tiếp trên Telegram
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300 mt-2">
+              <input id="chkInteractiveBot" type="checkbox" checked class="rounded text-sky-500 focus:ring-0" />
+              <span>Cho phép gõ <code>/all</code>, <code>/thoitiet</code>, <code>/xoso</code>, <code>/btc</code>...</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Personalization & Section Toggles -->
+        <div class="border-t border-slate-700/70 pt-4 space-y-4">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Tuỳ chỉnh nội dung các chuyên mục trong bản tin
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Weather City -->
+            <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-sky-300">🌤️ Thời tiết</span>
+                <input id="chkWeather" type="checkbox" checked class="rounded text-sky-500" />
+              </div>
+              <select
+                id="selectCityPreset"
+                onchange="onCityPresetChange()"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+              ></select>
+            </div>
+
+            <!-- Lucky Number Config -->
+            <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 sm:col-span-2">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-emerald-300">🍀 Con số may mắn hôm nay</span>
+                <input id="chkLucky" type="checkbox" checked class="rounded text-sky-500" />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <select
+                  id="selectLuckyMode"
+                  class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                >
+                  <option value="personalized">Theo tên & ngày sinh</option>
+                  <option value="random">Ngẫu nhiên mỗi lần</option>
+                </select>
+                <input
+                  id="inputUserName"
+                  type="text"
+                  placeholder="Tên của bạn"
+                  class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                />
+                <input
+                  id="inputBirthDate"
+                  type="date"
+                  class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div class="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input id="chkLottery" type="checkbox" checked class="rounded text-sky-500" />
+                <span>🎰 Xổ số miền Bắc</span>
+              </label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input id="chkCrypto" type="checkbox" checked class="rounded text-sky-500" />
+                <span>₿ Giá Bitcoin & Crypto</span>
+              </label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input id="chkNews" type="checkbox" checked class="rounded text-sky-500" />
+                <span>🌍 Tin thế giới (VnExpress RSS)</span>
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onclick="saveConfiguration()"
+              class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition"
+            >
+              💾 Lưu cấu hình & Áp dụng
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Live Telegram Message Preview (5 cols) -->
+      <div class="lg:col-span-5 glass-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-700/70 pb-3 mb-3">
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                📱 Xem trước tin nhắn Telegram
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Hiển thị chính xác nội dung HTML sẽ gửi vào khung chat Telegram
+              </p>
+            </div>
+            <button
+              onclick="copyTelegramPreview()"
+              class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+            >
+              📋 Copy
+            </button>
+          </div>
+
+          <!-- Simulated Telegram Chat Window -->
+          <div class="rounded-xl bg-[#0e1621] p-3.5 border border-slate-800 max-h-[370px] overflow-y-auto">
+            <div class="bg-[#182533] rounded-2xl rounded-tl-sm p-3.5 text-xs leading-relaxed text-slate-100 shadow-md tg-preview whitespace-pre-line" id="telegramPreviewBox">
+              Đang tổng hợp dữ liệu trực tiếp...
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Custom Notification Sender -->
+        <div class="mt-4 pt-3 border-t border-slate-700/70">
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">
+            💬 Gửi thêm thông báo nhanh tuỳ ý qua Bot:
+          </label>
+          <div class="flex gap-2">
+            <input
+              id="inputCustomMessage"
+              type="text"
+              placeholder="Nhập nội dung tin nhắn bất kỳ muốn bắn qua Telegram..."
+              class="flex-1 bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500"
+            />
+            <button
+              onclick="sendCustomMessage()"
+              class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 text-xs font-semibold whitespace-nowrap"
+            >
+              Gửi tin này
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 Live Data Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- 1. Weather Card -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+              🌤️ Thời tiết hôm nay
+            </span>
+            <button
+              onclick="sendSection('weather')"
+              class="text-xs px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 transition"
+            >
+              ✈️ Đẩy mục này
+            </button>
+          </div>
+          <div id="cardWeatherContent" class="space-y-3 text-sm">
+            <p class="text-slate-400 text-xs">Đang tải thời tiết...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Lucky Number Card -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              🍀 Con số may mắn hôm nay
+            </span>
+            <button
+              onclick="sendSection('lucky')"
+              class="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition"
+            >
+              ✈️ Đẩy mục này
+            </button>
+          </div>
+          <div id="cardLuckyContent" class="space-y-3 text-sm">
+            <p class="text-slate-400 text-xs">Đang tính con số may mắn...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Lottery XSMB Card -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              🎰 Xổ số miền Bắc (Hôm qua)
+            </span>
+            <button
+              onclick="sendSection('lottery')"
+              class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition"
+            >
+              ✈️ Đẩy mục này
+            </button>
+          </div>
+          <div id="cardLotteryContent" class="space-y-2.5 text-sm">
+            <p class="text-slate-400 text-xs">Đang tải kết quả XSMB...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Bitcoin & Crypto Card -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+              ₿ Bitcoin & Thị trường Crypto
+            </span>
+            <button
+              onclick="sendSection('crypto')"
+              class="text-xs px-2.5 py-1 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/30 transition"
+            >
+              ✈️ Đẩy mục này
+            </button>
+          </div>
+          <div id="cardCryptoContent" class="space-y-2.5 text-sm">
+            <p class="text-slate-400 text-xs">Đang tải giá Bitcoin...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. World News Card (2 cols wide on large screens) -->
+      <div class="glass-card rounded-2xl p-5 md:col-span-2 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+              🌍 Tin tức thế giới mới nhất
+            </span>
+            <button
+              onclick="sendSection('news')"
+              class="text-xs px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 transition"
+            >
+              ✈️ Đẩy mục này
+            </button>
+          </div>
+          <div id="cardNewsContent" class="space-y-2.5 text-sm">
+            <p class="text-slate-400 text-xs">Đang tải tin tức thế giới...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification History -->
+    <div class="glass-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+          📜 Lịch sử đẩy thông báo Telegram gần đây
+        </h2>
+        <button
+          onclick="loadHistory()"
+          class="text-xs text-slate-400 hover:text-white"
+        >
+          Làm mới lịch sử
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400">
+              <th class="py-2 px-3">Thời gian</th>
+              <th class="py-2 px-3">Hình thức</th>
+              <th class="py-2 px-3">Nội dung</th>
+              <th class="py-2 px-3">Chat ID</th>
+              <th class="py-2 px-3">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+            <tr>
+              <td colspan="5" class="py-4 text-center text-slate-500">Chưa có lịch sử gửi thông báo nào.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

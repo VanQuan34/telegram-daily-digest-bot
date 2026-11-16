@@ -1,0 +1,37 @@
+{
+  "enableInteractiveBot": true,
+  "scheduleEnabled": true,
+  "scheduleTime": "07:00",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "weather": {
+    "enabled": true,
+    "cityName": "Hà Nội",
+    "lat": 21.0285,
+    "lon": 105.8542
+  },
+  "lottery": {
+    "enabled": true
+  },
+  "lucky": {
+    "enabled": true,
+    "mode": "personalized",
+    "userName": "Bạn",
+    "birthDate": "1996-04-03"
+  },
+  "crypto": {
+    "enabled": true,
+    "coins": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "BNB"
+    ]
+  },
+  "news": {
+    "enabled": true,
+    "rssUrl": "https://vnexpress.net/rss/the-gioi.rss",
+    "maxItems": 5
+  },
+  "customHeader": "🌅 <b>BẢN TIN TỔNG HỢP HÔM NAY</b>",
+  "customFooter": "💡 <i>Chúc bạn một ngày mới tràn đầy năng lượng và may mắn!</i>"
+}

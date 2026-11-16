@@ -1,0 +1,46 @@
+name: 🌅 Gửi Bản Tin Telegram Hàng Ngày (7h Sáng)
+
+on:
+  # 1. Tự động chạy theo lịch mỗi ngày
+  # Lưu ý: GitHub Actions dùng giờ quốc tế UTC (Việt Nam là UTC+7).
+  # '0 0 * * *' (00:00 UTC) tương ứng đúng 07:00 sáng giờ Việt Nam.
+  # Nếu muốn 07:30 sáng giờ VN, đổi thành: '30 0 * * *'
+  schedule:
+    - cron: '0 0 * * *'
+
+  # 2. Cho phép bấm nút "Run workflow" thủ công ngay trên web GitHub để test bất cứ lúc nào
+  workflow_dispatch:
+
+jobs:
+  send-telegram-digest:
+    name: Tổng hợp & Đẩy thông báo Telegram
+    runs-on: ubuntu-latest
+
+    env:
+      TZ: Asia/Ho_Chi_Minh
+
+    steps:
+      - name: 📥 Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: 🟢 Cài đặt Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Cài đặt thư viện (npm ci)
+        run: npm ci
+
+      - name: 🚀 Tổng hợp dữ liệu và gửi qua Telegram Bot
+        env:
+          # Bắt buộc: Cài đặt trong GitHub Repo -> Settings -> Secrets and variables -> Actions -> Secrets
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+          # Tuỳ chọn (nếu không đặt sẽ dùng mặc định trong code: Hà Nội, Bạn, 1998-08-18)
+          # Có thể thêm trong tab Variables của GitHub Actions:
+          WEATHER_CITY_ID: ${{ vars.WEATHER_CITY_ID }}
+          LUCKY_USER_NAME: ${{ vars.LUCKY_USER_NAME }}
+          LUCKY_BIRTH_DATE: ${{ vars.LUCKY_BIRTH_DATE }}
+        run: npm run send-once
