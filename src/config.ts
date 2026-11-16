@@ -28,13 +28,21 @@ export const DEFAULT_CONFIG: AppConfig = {
   telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
   enableInteractiveBot: true,
   scheduleEnabled: true,
-  scheduleTime: '07:30',
+  scheduleTime: '07:00',
+  eveningScheduleEnabled: true,
+  eveningScheduleTime: '21:00',
   timezone: 'Asia/Ho_Chi_Minh',
   weather: {
     enabled: true,
     cityName: 'Hà Nội',
     lat: 21.0285,
     lon: 105.8542
+  },
+  lunar: {
+    enabled: true
+  },
+  finance: {
+    enabled: true
   },
   lottery: {
     enabled: true
@@ -43,7 +51,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     enabled: true,
     mode: 'personalized',
     userName: 'Bạn',
-    birthDate: '1998-08-18'
+    birthDate: '1996-04-03'
   },
   crypto: {
     enabled: true,
@@ -55,7 +63,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     maxItems: 5
   },
   customHeader: '🌅 <b>BẢN TIN TỔNG HỢP HÔM NAY</b>',
-  customFooter: '💡 <i>Chúc bạn một ngày mới tràn đầy năng lượng và may mắn!</i>'
+  customFooter: '💡 <i>Chúc bạn một ngày mới tràn đầy năng lượng, sức khỏe và tài lộc!</i>'
 };
 
 function ensureDataDir() {
@@ -81,6 +89,8 @@ export function loadConfig(): AppConfig {
       ...DEFAULT_CONFIG,
       ...prefs,
       weather: { ...DEFAULT_CONFIG.weather, ...(prefs.weather || {}) },
+      lunar: { ...DEFAULT_CONFIG.lunar, ...(prefs.lunar || {}) },
+      finance: { ...DEFAULT_CONFIG.finance, ...(prefs.finance || {}) },
       lottery: { ...DEFAULT_CONFIG.lottery, ...(prefs.lottery || {}) },
       lucky: { ...DEFAULT_CONFIG.lucky, ...(prefs.lucky || {}) },
       crypto: { ...DEFAULT_CONFIG.crypto, ...(prefs.crypto || {}) },
@@ -99,6 +109,8 @@ export function loadConfig(): AppConfig {
       ...prefs,
       ...parsed,
       weather: { ...DEFAULT_CONFIG.weather, ...(prefs.weather || {}), ...(parsed.weather || {}) },
+      lunar: { ...DEFAULT_CONFIG.lunar, ...(prefs.lunar || {}), ...(parsed.lunar || {}) },
+      finance: { ...DEFAULT_CONFIG.finance, ...(prefs.finance || {}), ...(parsed.finance || {}) },
       lottery: { ...DEFAULT_CONFIG.lottery, ...(prefs.lottery || {}), ...(parsed.lottery || {}) },
       lucky: { ...DEFAULT_CONFIG.lucky, ...(prefs.lucky || {}), ...(parsed.lucky || {}) },
       crypto: { ...DEFAULT_CONFIG.crypto, ...(prefs.crypto || {}), ...(parsed.crypto || {}) },
@@ -116,7 +128,6 @@ export function saveConfig(config: AppConfig): AppConfig {
   ensureDataDir();
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 
-  // Lưu các tuỳ chỉnh không nhạy cảm vào data/preferences.json (an toàn để đẩy lên GitHub cho GitHub Actions dùng)
   const { telegramBotToken, telegramChatId, ...safePrefs } = config;
   fs.writeFileSync(PREFS_FILE, JSON.stringify(safePrefs, null, 2), 'utf-8');
 
@@ -144,7 +155,7 @@ export function addHistoryEntry(entry: Omit<HistoryEntry, 'id' | 'timestamp'>): 
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     timestamp: new Date().toISOString()
   };
-  const updated = [newEntry, ...list].slice(0, 50); // Keep last 50 entries
+  const updated = [newEntry, ...list].slice(0, 50);
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(updated, null, 2), 'utf-8');
   return newEntry;
 }

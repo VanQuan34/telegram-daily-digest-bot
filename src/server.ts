@@ -25,7 +25,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// Get current config & presets
 app.get('/api/config', (_req, res) => {
   const config = loadConfig();
   res.json({
@@ -34,7 +33,6 @@ app.get('/api/config', (_req, res) => {
   });
 });
 
-// Save config & update scheduler
 app.post('/api/config', (req, res) => {
   try {
     const current = loadConfig();
@@ -42,6 +40,8 @@ app.post('/api/config', (req, res) => {
       ...current,
       ...req.body,
       weather: { ...current.weather, ...(req.body.weather || {}) },
+      lunar: { ...current.lunar, ...(req.body.lunar || {}) },
+      finance: { ...current.finance, ...(req.body.finance || {}) },
       lottery: { ...current.lottery, ...(req.body.lottery || {}) },
       lucky: { ...current.lucky, ...(req.body.lucky || {}) },
       crypto: { ...current.crypto, ...(req.body.crypto || {}) },
@@ -54,7 +54,6 @@ app.post('/api/config', (req, res) => {
   }
 });
 
-// Search city coordinates for Weather
 app.get('/api/cities/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) {
@@ -65,49 +64,51 @@ app.get('/api/cities/search', async (req, res) => {
   res.json({ results });
 });
 
-// Live preview of full digest
-app.get('/api/preview', async (_req, res) => {
+app.get('/api/preview', async (req, res) => {
   try {
     const config = loadConfig();
-    const digest = await buildFullDigest(config);
+    const edition = req.query.edition === 'evening' ? 'evening' : 'morning';
+    const digest = await buildFullDigest(config, edition);
     res.json({ ok: true, digest });
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || 'Không thể tải bản tin xem trước' });
   }
 });
 
-// Verify Telegram Bot Token
 app.post('/api/telegram/verify', async (req, res) => {
   const token = String(req.body.botToken || loadConfig().telegramBotToken || '');
   const result = await verifyTelegramBot(token);
   res.json(result);
 });
 
-// Auto-detect Chat IDs from recent messages sent to Bot
 app.post('/api/telegram/detect-chats', async (req, res) => {
   const token = String(req.body.botToken || loadConfig().telegramBotToken || '');
   const result = await detectRecentChatIds(token);
   res.json(result);
 });
 
-// Send full digest or single section to Telegram immediately
 app.post('/api/send', async (req, res) => {
   try {
     const config = loadConfig();
     const botToken = String(req.body.botToken || config.telegramBotToken || '').trim();
     const chatId = String(req.body.chatId || config.telegramChatId || '').trim();
     const section = String(req.body.section || 'all');
+    const edition = req.body.edition === 'evening' ? 'evening' : 'morning';
 
     let htmlToSend = '';
-    let label = 'Toàn bộ bản tin tổng hợp';
+    let label = edition === 'evening' ? 'Bản tin Tổng kết Buổi Tối' : 'Toàn bộ Bản tin Tổng hợp';
 
     if (section === 'all') {
-      const digest = await buildFullDigest(config);
+      const digest = await buildFullDigest(config, edition);
       htmlToSend = digest.telegramHtml;
-    } else if (['weather', 'lottery', 'lucky', 'crypto', 'news'].includes(section)) {
+    } else if (
+      ['weather', 'lunar', 'finance', 'lottery', 'lucky', 'crypto', 'news'].includes(section)
+    ) {
       htmlToSend = await buildSingleSectionTelegram(section as any, config);
       const mapName: Record<string, string> = {
-        weather: 'Thời tiết hôm nay',
+        weather: 'Thời tiết & Bụi mịn AQI',
+        lunar: 'Lịch Âm - Dương & Xuất hành',
+        finance: 'Giá Vàng, Tỷ giá & Xăng dầu',
         lottery: 'Xổ số miền Bắc',
         lucky: 'Con số may mắn',
         crypto: 'Giá Bitcoin & Crypto',
@@ -135,6 +136,7 @@ app.post('/api/send', async (req, res) => {
     res.json({
       ok: sendRes.ok,
       error: sendRes.error,
+      sentCount: sendRes.sentCount,
       historyItem
     });
   } catch (err: any) {
@@ -142,7 +144,6 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-// Get notification history
 app.get('/api/history', (_req, res) => {
   res.json({ history: loadHistory() });
 });

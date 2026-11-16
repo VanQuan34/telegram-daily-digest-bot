@@ -1,20 +1,40 @@
-name: 🌅 Gửi Bản Tin Telegram Hàng Ngày (7h Sáng)
+name: 🌅 Bản Tin Telegram (Sáng 7h & Tối 21h) + GitHub Pages Dashboard
 
 on:
-  # 1. Tự động chạy theo lịch mỗi ngày
-  # Lưu ý: GitHub Actions dùng giờ quốc tế UTC (Việt Nam là UTC+7).
-  # '0 0 * * *' (00:00 UTC) tương ứng đúng 07:00 sáng giờ Việt Nam.
-  # Nếu muốn 07:30 sáng giờ VN, đổi thành: '30 0 * * *'
   schedule:
+    # 07:00 sáng giờ Việt Nam (00:00 UTC)
     - cron: '0 0 * * *'
+    # 21:00 tối giờ Việt Nam (14:00 UTC)
+    - cron: '0 14 * * *'
 
-  # 2. Cho phép bấm nút "Run workflow" thủ công ngay trên web GitHub để test bất cứ lúc nào
+  push:
+    branches:
+      - master
+      - main
+
   workflow_dispatch:
+    inputs:
+      edition:
+        description: 'Chọn phiên bản gửi (morning / evening)'
+        required: false
+        default: 'morning'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages-and-digest'
+  cancel-in-progress: false
 
 jobs:
-  send-telegram-digest:
-    name: Tổng hợp & Đẩy thông báo Telegram
+  digest-and-deploy:
+    name: Tổng hợp dữ liệu, Gửi Telegram & Cập nhật Web Dashboard
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     env:
       TZ: Asia/Ho_Chi_Minh
@@ -32,15 +52,23 @@ jobs:
       - name: 📦 Cài đặt thư viện (npm ci)
         run: npm ci
 
-      - name: 🚀 Tổng hợp dữ liệu và gửi qua Telegram Bot
+      - name: 🚀 Tổng hợp dữ liệu (Thời tiết, AQI, Lịch Âm, Giá Vàng, XSMB, Bitcoin, Tin tức) & Đẩy Telegram
         env:
-          # Bắt buộc: Cài đặt trong GitHub Repo -> Settings -> Secrets and variables -> Actions -> Secrets
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
-          # Tuỳ chọn (nếu không đặt sẽ dùng mặc định trong code: Hà Nội, Bạn, 1998-08-18)
-          # Có thể thêm trong tab Variables của GitHub Actions:
-          WEATHER_CITY_ID: ${{ vars.WEATHER_CITY_ID }}
-          LUCKY_USER_NAME: ${{ vars.LUCKY_USER_NAME }}
-          LUCKY_BIRTH_DATE: ${{ vars.LUCKY_BIRTH_DATE }}
+          DIGEST_EDITION: ${{ github.event.inputs.edition }}
+          # Nếu chỉ push code thông thường thì tạo dữ liệu cho Web Dashboard, còn chạy theo lịch hẹn hoặc bấm Run workflow thì bắn tin Telegram luôn:
+          BUILD_STATIC_ONLY: ${{ github.event_name == 'push' && 'true' || 'false' }}
         run: npm run send-once
+
+      - name: 🌐 Cấu hình GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: 📤 Đóng gói giao diện Web Dashboard (thư mục public/)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: 🚀 Triển khai lên GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

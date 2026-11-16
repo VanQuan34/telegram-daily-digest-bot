@@ -1,4 +1,4 @@
-import { WeatherData } from '../types';
+import { AirQualityData, WeatherData } from '../types';
 
 interface WMOInfo {
   desc: string;
@@ -27,7 +27,81 @@ const WMO_CODES: Record<number, WMOInfo> = {
   99: { desc: 'Giông bão mạnh', icon: '⛈️' }
 };
 
-function buildAdvice(temp: number, maxTemp: number, rainProb: number, uv: number): string {
+export function classifyAqi(aqi: number, pm25: number, pm10: number): AirQualityData {
+  if (aqi <= 50) {
+    return {
+      aqi,
+      pm25,
+      pm10,
+      level: 'Tốt (Trong lành)',
+      badge: '🟢',
+      advice: 'Không khí trong lành, rất tốt để mở cửa sổ và tập thể dục ngoài trời.'
+    };
+  }
+  if (aqi <= 100) {
+    return {
+      aqi,
+      pm25,
+      pm10,
+      level: 'Trung bình',
+      badge: '🟡',
+      advice: 'Chất lượng không khí chấp nhận được; người nhạy cảm hạn chế ở ngoài đường quá lâu.'
+    };
+  }
+  if (aqi <= 150) {
+    return {
+      aqi,
+      pm25,
+      pm10,
+      level: 'Kém (Nhóm nhạy cảm)',
+      badge: '🟠',
+      advice: 'Bụi mịn tăng cao, nên đeo khẩu trang chống bụi khi di chuyển ngoài đường.'
+    };
+  }
+  if (aqi <= 200) {
+    return {
+      aqi,
+      pm25,
+      pm10,
+      level: 'Ô nhiễm (Có hại sức khỏe)',
+      badge: '🔴',
+      advice: 'Không khí ô nhiễm nặng! Bắt buộc đeo khẩu trang lọc bụi mịn PM2.5 (N95/KF94) khi ra ngoài.'
+    };
+  }
+  return {
+    aqi,
+    pm25,
+    pm10,
+    level: 'Rất nguy hại',
+    badge: '🟣',
+    advice: 'Cảnh báo ô nhiễm bụi mịn nghiêm trọng! Hạn chế tối đa hoạt động ngoài trời và đóng kín cửa.'
+  };
+}
+
+async function fetchAirQuality(lat: number, lon: number): Promise<AirQualityData | undefined> {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm10,pm2_5&timezone=Asia%2FHo_Chi_Minh`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return undefined;
+    const data: any = await res.json();
+    const cur = data?.current;
+    if (!cur) return undefined;
+    const aqi = Math.round(Number(cur.us_aqi ?? 65));
+    const pm25 = Number(Number(cur.pm2_5 ?? 22).toFixed(1));
+    const pm10 = Number(Number(cur.pm10 ?? 38).toFixed(1));
+    return classifyAqi(aqi, pm25, pm10);
+  } catch {
+    return undefined;
+  }
+}
+
+function buildAdvice(
+  temp: number,
+  maxTemp: number,
+  rainProb: number,
+  uv: number,
+  aqi?: AirQualityData
+): string {
   const tips: string[] = [];
   if (rainProb >= 60) {
     tips.push('Nhớ mang theo ô (dù) hoặc áo mưa khi ra ngoài');
@@ -36,21 +110,27 @@ function buildAdvice(temp: number, maxTemp: number, rainProb: number, uv: number
   }
 
   if (maxTemp >= 35) {
-    tips.push('Trời nắng nóng gay gắt, chú ý uống nhiều nước và chống nắng');
-  } else if (temp <= 18) {
+    tips.push('Trời nắng nóng gay gắt, chú ý uống nhiều nước');
+  } else if (temp <= 19) {
     tips.push('Trời se lạnh, hãy mặc thêm áo khoác ấm');
   } else {
-    tips.push('Thời tiết khá dễ chịu cho các hoạt động ngoài trời');
+    tips.push('Nhiệt độ khá dễ chịu cho công việc & di chuyển');
   }
 
   if (uv >= 7) {
-    tips.push(`Chỉ số UV cao (${uv.toFixed(1)}), nên bôi kem chống nắng & đeo kính râm`);
+    tips.push(`UV cao (${uv.toFixed(1)}), nên che chắn nắng`);
+  }
+
+  if (aqi && aqi.aqi > 100) {
+    tips.push(`Bụi mịn AQI=${aqi.aqi}, nhớ đeo khẩu trang lọc bụi PM2.5`);
   }
 
   return tips.join('. ') + '.';
 }
 
 export async function fetchWeather(cityName: string, lat: number, lon: number): Promise<WeatherData> {
+  const airQuality = await fetchAirQuality(lat, lon);
+
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,precipitation_probability_max&timezone=Asia%2FHo_Chi_Minh&forecast_days=1`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -87,7 +167,8 @@ export async function fetchWeather(cityName: string, lat: number, lon: number): 
       weatherCode: code,
       description: wmo.desc,
       icon: wmo.icon,
-      advice: buildAdvice(currentTemp, maxTemp, rainProbability, uvIndex),
+      advice: buildAdvice(currentTemp, maxTemp, rainProbability, uvIndex, airQuality),
+      airQuality,
       updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     };
   } catch (err) {
@@ -106,6 +187,7 @@ export async function fetchWeather(cityName: string, lat: number, lon: number): 
       description: 'Có mây rải rác, nắng nhẹ',
       icon: '⛅',
       advice: 'Thời tiết mát mẻ, thuận lợi di chuyển và làm việc.',
+      airQuality,
       updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     };
   }
@@ -130,13 +212,22 @@ export async function searchCityCoordinates(query: string): Promise<Array<{ name
 }
 
 export function formatWeatherTelegram(w: WeatherData): string {
-  return [
-    `${w.icon} <b>THỜI TIẾT HÔM NAY — ${w.cityName.toUpperCase()}</b>`,
+  const lines = [
+    `${w.icon} <b>THỜI TIẾT & KHÔNG KHÍ — ${w.cityName.toUpperCase()}</b>`,
     `• Trạng thái: <b>${w.description}</b>`,
     `• Nhiệt độ hiện tại: <b>${w.currentTemp}°C</b> (Cảm giác như ${w.feelsLike}°C)`,
     `• Biên độ nhiệt ngày: <b>${w.minTemp}°C – ${w.maxTemp}°C</b>`,
     `• Độ ẩm: <b>${w.humidity}%</b> | Gió: <b>${w.windSpeed} km/h</b>`,
-    `• Khả năng mưa: <b>${w.rainProbability}%</b> | Chỉ số UV: <b>${w.uvIndex}</b>`,
-    `👉 <i>Lời khuyên: ${w.advice}</i>`
-  ].join('\n');
+    `• Khả năng mưa: <b>${w.rainProbability}%</b> | Chỉ số UV: <b>${w.uvIndex}</b>`
+  ];
+
+  if (w.airQuality) {
+    const aq = w.airQuality;
+    lines.push(
+      `• 😷 <b>Chất lượng không khí (AQI):</b> ${aq.badge} <b>${aq.aqi}</b> — <b>${aq.level}</b> (Bụi mịn PM2.5: <code>${aq.pm25} µg/m³</code>)`
+    );
+  }
+
+  lines.push(`👉 <i>Lời khuyên: ${w.advice}</i>`);
+  return lines.join('\n');
 }

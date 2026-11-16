@@ -1,0 +1,295 @@
+{
+  "ok": true,
+  "digest": {
+    "edition": "morning",
+    "generatedAt": "2026-11-16T09:38:13.959Z",
+    "weather": {
+      "cityName": "Hà Nội",
+      "currentTemp": 28.7,
+      "feelsLike": 32.2,
+      "minTemp": 22.5,
+      "maxTemp": 30.6,
+      "humidity": 70,
+      "windSpeed": 13.1,
+      "rainProbability": 45,
+      "uvIndex": 6.15,
+      "weatherCode": 0,
+      "description": "Trời quang đãng, nắng đẹp",
+      "icon": "☀️",
+      "advice": "Có khả năng mưa rào nhẹ, nên chuẩn bị áo mưa mỏng. Nhiệt độ khá dễ chịu cho công việc & di chuyển.",
+      "airQuality": {
+        "aqi": 71,
+        "pm25": 22.2,
+        "pm10": 24,
+        "level": "Trung bình",
+        "badge": "🟡",
+        "advice": "Chất lượng không khí chấp nhận được; người nhạy cảm hạn chế ở ngoài đường quá lâu."
+      },
+      "updatedAt": "16:38"
+    },
+    "lunar": {
+      "solarDate": "16/11/2026",
+      "lunarDay": 8,
+      "lunarMonth": 10,
+      "lunarYear": 2026,
+      "isLeapMonth": false,
+      "lunarDateFormatted": "08/10 năm Bính Ngọ",
+      "canChiDay": "Giáp Ngọ",
+      "canChiMonth": "Kỷ Hợi",
+      "canChiYear": "Bính Ngọ",
+      "tietKhi": "Lập Đông",
+      "auspiciousDirection": {
+        "hyThan": "Đông Bắc",
+        "taiThan": "Đông Nam"
+      },
+      "auspiciousHours": "Tý (23h-1h), Sửu (1h-3h), Mão (5h-7h), Ngọ (11h-13h), Thân (15h-17h), Dậu (17h-19h)",
+      "nextMoonNote": "Còn 7 ngày nữa đến Rằm tháng 10 Âm lịch",
+      "upcomingEvents": [
+        {
+          "name": "Ngày Nhà giáo Việt Nam (20/11)",
+          "dateStr": "20/11/2026",
+          "daysLeft": 4
+        },
+        {
+          "name": "Lễ Giáng Sinh (Noel 24/12)",
+          "dateStr": "24/12/2026",
+          "daysLeft": 38
+        }
+      ]
+    },
+    "finance": {
+      "gold": [
+        {
+          "name": "Vàng miếng SJC 9999",
+          "buyVnd": "123.4 tr",
+          "sellVnd": "125.4 tr",
+          "note": "₫/lượng"
+        },
+        {
+          "name": "Vàng Nhẫn tròn trơn 9999 (DOJI/PNJ)",
+          "buyVnd": "122.0 tr",
+          "sellVnd": "123.5 tr",
+          "note": "₫/lượng"
+        }
+      ],
+      "worldGoldUsdOz": 3846,
+      "forex": [
+        {
+          "code": "USD",
+          "name": "Đô la Mỹ",
+          "rateVnd": 25716
+        },
+        {
+          "code": "EUR",
+          "name": "Euro",
+          "rateVnd": 28365
+        },
+        {
+          "code": "JPY",
+          "name": "Yên Nhật",
+          "rateVnd": 160.94
+        },
+        {
+          "code": "CNY",
+          "name": "Nhân dân tệ",
+          "rateVnd": 3851
+        }
+      ],
+      "fuel": [
+        {
+          "name": "Xăng RON 95-III",
+          "priceVnd": 20960,
+          "unit": "₫/lít"
+        },
+        {
+          "name": "Xăng E5 RON 92",
+          "priceVnd": 19840,
+          "unit": "₫/lít"
+        },
+        {
+          "name": "Dầu Diesel 0.05S",
+          "priceVnd": 18590,
+          "unit": "₫/lít"
+        }
+      ],
+      "updatedAt": "16:38"
+    },
+    "lottery": {
+      "date": "15/11",
+      "specialPrize": "61225",
+      "firstPrize": "83438",
+      "secondPrizes": [
+        "28193",
+        "64772"
+      ],
+      "thirdPrizes": [
+        "16283",
+        "41264",
+        "95726",
+        "61780",
+        "63680",
+        "38697"
+      ],
+      "fourthPrizes": [
+        "4403",
+        "8645",
+        "2183",
+        "5423"
+      ],
+      "fifthPrizes": [
+        "9123",
+        "8986",
+        "5739",
+        "7536",
+        "5309",
+        "2485"
+      ],
+      "sixthPrizes": [
+        "440",
+        "582",
+        "769"
+      ],
+      "seventhPrizes": [
+        "44",
+        "12",
+        "25",
+        "65"
+      ],
+      "twoDigitNumbers": [
+        "03",
+        "09",
+        "12",
+        "23",
+        "23",
+        "25",
+        "25",
+        "26",
+        "36",
+        "38",
+        "39",
+        "40",
+        "44",
+        "45",
+        "64",
+        "65",
+        "69",
+        "72",
+        "80",
+        "80",
+        "82",
+        "83",
+        "83",
+        "85",
+        "86",
+        "93",
+        "97"
+      ],
+      "source": "XSKT Miền Bắc (RSS trực tiếp)"
+    },
+    "lucky": {
+      "date": "16/11/2026",
+      "canChiDay": "Ngày Giáp Ngọ",
+      "luckyNumber2D": "47",
+      "luckyNumber3D": "413",
+      "luckyPair": [
+        "47",
+        "93",
+        "52"
+      ],
+      "luckyColor": "Xanh Lá Ngọc & Xanh Rêu (Hành Mộc)",
+      "auspiciousHours": "Dần (3h-5h), Mão (5h-7h), Tỵ (9h-11h), Thân (15h-17h), Tuất (19h-21h), Hợi (21h-23h)",
+      "quote": "Năng lượng tích cực sẽ thu hút may mắn về tài lộc và công việc. Hãy giữ tinh thần cởi mở và quyết đoán.",
+      "fortuneScore": 98,
+      "mode": "personalized",
+      "forPerson": "Bạn (1996-04-03)"
+    },
+    "crypto": {
+      "coins": [
+        {
+          "symbol": "BTC",
+          "name": "Bitcoin",
+          "priceUsd": 64390.71,
+          "priceVnd": 1655854959,
+          "change24h": -1.569,
+          "high24h": 65800.75,
+          "low24h": 64128
+        },
+        {
+          "symbol": "ETH",
+          "name": "Ethereum",
+          "priceUsd": 1799.92,
+          "priceVnd": 46286280,
+          "change24h": -1.463,
+          "high24h": 1842.85,
+          "low24h": 1791.41
+        },
+        {
+          "symbol": "SOL",
+          "name": "Solana",
+          "priceUsd": 70.9,
+          "priceVnd": 1823246,
+          "change24h": -1.377,
+          "high24h": 73.28,
+          "low24h": 70.45
+        },
+        {
+          "symbol": "BNB",
+          "name": "BNB",
+          "priceUsd": 589.93,
+          "priceVnd": 15170488,
+          "change24h": -1.015,
+          "high24h": 598.96,
+          "low24h": 586
+        }
+      ],
+      "usdToVnd": 25715.743135,
+      "fearAndGreed": {
+        "value": 10,
+        "classification": "Sợ hãi tột độ 😨"
+      },
+      "updatedAt": "16:38"
+    },
+    "news": {
+      "sourceTitle": "Thế giới - VnExpress RSS",
+      "items": [
+        {
+          "title": "Mỹ, Nga, Trung sẽ bàn cách ổn định quan hệ giữa 3 cường quốc",
+          "link": "https://vnexpress.net/my-nga-trung-se-ban-cach-on-dinh-quan-he-giua-3-cuong-quoc-5145288.html",
+          "summary": "Lãnh đạo Mỹ, Nga, Trung Quốc sẽ thảo luận về \"hòa bình thế giới\" và cách ổn định quan hệ chiến lược khi gặp mặt tại Thâm Quyến tuần này.",
+          "pubDate": "15:57",
+          "source": "Thế giới - VnExpress RSS"
+        },
+        {
+          "title": "Tổng Bí thư, Chủ tịch nước gặp Tổng thống Pháp",
+          "link": "https://vnexpress.net/tong-bi-thu-chu-tich-nuoc-gap-tong-thong-phap-5145261.html",
+          "summary": "Tổng Bí thư, Chủ tịch nước Tô Lâm và Tổng thống Macron nhất trí triển khai tốt các dự án hợp tác chiến lược khi gặp song phương tại Hội n...",
+          "pubDate": "15:48",
+          "source": "Thế giới - VnExpress RSS"
+        },
+        {
+          "title": "Sĩ quan Mỹ thoát chết ở Kuwait gửi đơn khiếu nại Lầu Năm Góc",
+          "link": "https://vnexpress.net/si-quan-my-thoat-chet-o-kuwait-gui-don-khieu-nai-lau-nam-goc-5145256.html",
+          "summary": "Sống sót sau vụ tập kích UAV của Iran, thiếu tá Stephen Ramsbottom gửi đơn cáo buộc lãnh đạo quân đội Mỹ phớt lờ củng cố phòng thủ.",
+          "pubDate": "15:03",
+          "source": "Thế giới - VnExpress RSS"
+        },
+        {
+          "title": "Lữ đoàn Hamas liên tiếp mất chỉ huy do Israel hạ sát",
+          "link": "https://vnexpress.net/lu-doan-hamas-lien-tiep-mat-chi-huy-do-israel-ha-sat-5145202.html",
+          "summary": "Israel hạ sát chỉ huy Lữ đoàn Rafah của Hamas, chỉ hai tháng sau khi tập kích khiến chỉ huy tiền nhiệm thiệt mạng.",
+          "pubDate": "14:54",
+          "source": "Thế giới - VnExpress RSS"
+        },
+        {
+          "title": "Chiếc router khiến không phận Mỹ tê liệt",
+          "link": "https://vnexpress.net/chiec-router-khien-khong-phan-my-te-liet-5145033.html",
+          "summary": "Bộ router mới lắp đặt tại Arkansas bỗng nhiên phát lượng dữ liệu khổng lồ, gây quá tải mạng lưới kiểm soát không lưu, buộc Mỹ đình chỉ ba...",
+          "pubDate": "14:35",
+          "source": "Thế giới - VnExpress RSS"
+        }
+      ],
+      "updatedAt": "16:38"
+    },
+    "telegramHtml": "🌅 <b>BẢN TIN TỔNG HỢP HÔM NAY</b>\n📅 <i>Thứ Hai, 16/11/2026</i>\n━━━━━━━━━━━━━━━━━━━━\n🏮 <b>LỊCH ÂM - DƯƠNG & XUẤT HÀNH</b>\n• Dương lịch: <b>16/11/2026</b> | Âm lịch: <b>08/10 năm Bính Ngọ</b>\n• Can Chi: Ngày <b>Giáp Ngọ</b>, Tháng <b>Kỷ Hợi</b> | Tiết khí: <b>Lập Đông</b>\n• 🧭 <b>Hướng xuất hành tốt:</b> Hỷ Thần: <b>Đông Bắc</b> — Tài Thần: <b>Đông Nam</b>\n• 🌙 <b>Chu kỳ trăng:</b> Còn 7 ngày nữa đến Rằm tháng 10 Âm lịch\n• ⏳ <b>Sự kiện sắp tới:</b> Ngày Nhà giáo Việt Nam (20/11) (còn <b>4 ngày</b>) • Lễ Giáng Sinh (Noel 24/12) (còn <b>38 ngày</b>)\n━━━━━━━━━━━━━━━━━━━━\n☀️ <b>THỜI TIẾT & KHÔNG KHÍ — HÀ NỘI</b>\n• Trạng thái: <b>Trời quang đãng, nắng đẹp</b>\n• Nhiệt độ hiện tại: <b>28.7°C</b> (Cảm giác như 32.2°C)\n• Biên độ nhiệt ngày: <b>22.5°C – 30.6°C</b>\n• Độ ẩm: <b>70%</b> | Gió: <b>13.1 km/h</b>\n• Khả năng mưa: <b>45%</b> | Chỉ số UV: <b>6.15</b>\n• 😷 <b>Chất lượng không khí (AQI):</b> 🟡 <b>71</b> — <b>Trung bình</b> (Bụi mịn PM2.5: <code>22.2 µg/m³</code>)\n👉 <i>Lời khuyên: Có khả năng mưa rào nhẹ, nên chuẩn bị áo mưa mỏng. Nhiệt độ khá dễ chịu cho công việc & di chuyển.</i>\n━━━━━━━━━━━━━━━━━━━━\n🍀 <b>CON SỐ MAY MẮN HÔM NAY (16/11/2026)</b>\n• Dành cho: <b>Bạn (1996-04-03)</b> | Lịch Can Chi: <b>Ngày Giáp Ngọ</b>\n• 🎯 <b>Con số chủ đạo (2 số):</b> <code>47</code>\n• 💎 <b>Bộ số tài lộc:</b> <code>47 - 93 - 52</code> | <b>3 càng:</b> <code>413</code>\n• 🎨 <b>Màu sắc hợp vận:</b> Xanh Lá Ngọc & Xanh Rêu (Hành Mộc)\n• ⏰ <b>Giờ hoàng đạo:</b> Dần (3h-5h), Mão (5h-7h), Tỵ (9h-11h), Thân (15h-17h), Tuất (19h-21h), Hợi (21h-23h)\n• 📈 <b>Chỉ số năng lượng & may mắn:</b> <b>98/100</b>\n✨ <i>\"Năng lượng tích cực sẽ thu hút may mắn về tài lộc và công việc. Hãy giữ tinh thần cởi mở và quyết đoán.\"</i>\n━━━━━━━━━━━━━━━━━━━━\n💰 <b>GIÁ VÀNG, TỶ GIÁ & XĂNG DẦU HÔM NAY</b>\n• 🪙 <b>Vàng miếng SJC 9999:</b> Mua <code>123.4 tr</code> — Bán <code>125.4 tr</code> (₫/lượng)\n• 🪙 <b>Vàng Nhẫn tròn trơn 9999 (DOJI/PNJ):</b> Mua <code>122.0 tr</code> — Bán <code>123.5 tr</code> (₫/lượng)\n• 🌐 <b>Vàng Thế giới (XAU/USD):</b> <b>$3,846/oz</b>\n• 💱 <b>Tỷ giá ngoại tệ:</b> <b>USD:</b> 25.716₫ | <b>EUR:</b> 28.365₫ | <b>JPY:</b> 160,94₫ | <b>CNY:</b> 3.851₫\n• ⛽ <b>Giá xăng dầu:</b> Xăng RON 95-III: <b>20.960₫/lít</b> | Xăng E5 RON 92: <b>19.840₫/lít</b> | Dầu Diesel 0.05S: <b>18.590₫/lít</b>\n━━━━━━━━━━━━━━━━━━━━\n🎰 <b>KẾT QUẢ XỔ SỐ MIỀN BẮC (15/11)</b>\n• 🏆 <b>Giải Đặc Biệt:</b> <code>61225</code>\n• 🥇 <b>Giải Nhất:</b> <code>83438</code>\n• 🥈 <b>Giải Nhì:</b> 28193 - 64772\n• 🥉 <b>Giải Ba:</b> 16283 - 41264 - 95726 - 61780 - 63680 - 38697\n• <b>Giải Tư:</b> 4403 - 8645 - 2183 - 5423\n• <b>Giải Năm:</b> 9123 - 8986 - 5739 - 7536 - 5309 - 2485\n• <b>Giải Sáu:</b> 440 - 582 - 769\n• 🎯 <b>Giải Bảy:</b> <b>44 - 12 - 25 - 65</b>\n• 🔢 <b>Đầu/Đuôi Lô tô nổi bật:</b> <code>03, 09, 12, 23, 25, 26, 36, 38, 39, 40, 44, 45, 64, 65, 69</code>\n━━━━━━━━━━━━━━━━━━━━\n₿ <b>THỊ TRƯỜNG BITCOIN & CRYPTO</b>\n• <b>BTC</b>: <b>$64,390.71</b> (~1.66 tỷ ₫) | 🔴 ▼ <b>-1.57%</b>\n  └ <i>Biên độ 24h BTC: $64,128 – $65,800.75</i>\n• <b>ETH</b>: <b>$1,799.92</b> (~46.3 tr ₫) | 🔴 ▼ <b>-1.46%</b>\n• <b>SOL</b>: <b>$70.90</b> (~1.8 tr ₫) | 🔴 ▼ <b>-1.38%</b>\n• <b>BNB</b>: <b>$589.93</b> (~15.2 tr ₫) | 🔴 ▼ <b>-1.01%</b>\n• 📊 <b>Chỉ số Fear & Greed:</b> <b>10/100</b> (Sợ hãi tột độ 😨)\n━━━━━━━━━━━━━━━━━━━━\n🌍 <b>TIN TỨC THẾ GIỚI NỔI BẬT</b>\n1. <a href=\"https://vnexpress.net/my-nga-trung-se-ban-cach-on-dinh-quan-he-giua-3-cuong-quoc-5145288.html\"><b>Mỹ, Nga, Trung sẽ bàn cách ổn định quan hệ giữa 3 cường quốc</b></a>\n   <i>Lãnh đạo Mỹ, Nga, Trung Quốc sẽ thảo luận về \"hòa bình thế giới\" và cách ổn định quan hệ chiến lược khi gặp mặt tại Thâm Quyến tuần này.</i>\n2. <a href=\"https://vnexpress.net/tong-bi-thu-chu-tich-nuoc-gap-tong-thong-phap-5145261.html\"><b>Tổng Bí thư, Chủ tịch nước gặp Tổng thống Pháp</b></a>\n   <i>Tổng Bí thư, Chủ tịch nước Tô Lâm và Tổng thống Macron nhất trí triển khai tốt các dự án hợp tác chiến lược khi gặp song phương tại Hội n...</i>\n3. <a href=\"https://vnexpress.net/si-quan-my-thoat-chet-o-kuwait-gui-don-khieu-nai-lau-nam-goc-5145256.html\"><b>Sĩ quan Mỹ thoát chết ở Kuwait gửi đơn khiếu nại Lầu Năm Góc</b></a>\n   <i>Sống sót sau vụ tập kích UAV của Iran, thiếu tá Stephen Ramsbottom gửi đơn cáo buộc lãnh đạo quân đội Mỹ phớt lờ củng cố phòng thủ.</i>\n4. <a href=\"https://vnexpress.net/lu-doan-hamas-lien-tiep-mat-chi-huy-do-israel-ha-sat-5145202.html\"><b>Lữ đoàn Hamas liên tiếp mất chỉ huy do Israel hạ sát</b></a>\n   <i>Israel hạ sát chỉ huy Lữ đoàn Rafah của Hamas, chỉ hai tháng sau khi tập kích khiến chỉ huy tiền nhiệm thiệt mạng.</i>\n5. <a href=\"https://vnexpress.net/chiec-router-khien-khong-phan-my-te-liet-5145033.html\"><b>Chiếc router khiến không phận Mỹ tê liệt</b></a>\n   <i>Bộ router mới lắp đặt tại Arkansas bỗng nhiên phát lượng dữ liệu khổng lồ, gây quá tải mạng lưới kiểm soát không lưu, buộc Mỹ đình chỉ ba...</i>\n━━━━━━━━━━━━━━━━━━━━\n💡 <i>Chúc bạn một ngày mới tràn đầy năng lượng và may mắn!</i>"
+  }
+}

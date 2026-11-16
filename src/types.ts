@@ -7,16 +7,24 @@ export interface CityPreset {
 
 export interface AppConfig {
   telegramBotToken: string;
-  telegramChatId: string;
+  telegramChatId: string; // Hỗ trợ 1 hoặc nhiều Chat ID cách nhau bằng dấu phẩy (ví dụ: "5134773769, -100987654")
   enableInteractiveBot: boolean;
   scheduleEnabled: boolean;
-  scheduleTime: string; // e.g. "07:30"
+  scheduleTime: string; // e.g. "07:00"
+  eveningScheduleEnabled: boolean;
+  eveningScheduleTime: string; // e.g. "21:00"
   timezone: string; // e.g. "Asia/Ho_Chi_Minh"
   weather: {
     enabled: boolean;
     cityName: string;
     lat: number;
     lon: number;
+  };
+  lunar: {
+    enabled: boolean;
+  };
+  finance: {
+    enabled: boolean;
   };
   lottery: {
     enabled: boolean;
@@ -40,6 +48,15 @@ export interface AppConfig {
   customFooter: string;
 }
 
+export interface AirQualityData {
+  aqi: number;
+  pm25: number;
+  pm10: number;
+  level: string;
+  badge: string;
+  advice: string;
+}
+
 export interface WeatherData {
   cityName: string;
   currentTemp: number;
@@ -54,6 +71,60 @@ export interface WeatherData {
   description: string;
   icon: string;
   advice: string;
+  airQuality?: AirQualityData;
+  updatedAt: string;
+}
+
+export interface LunarEventCountdown {
+  name: string;
+  dateStr: string;
+  daysLeft: number;
+}
+
+export interface LunarCalendarData {
+  solarDate: string;
+  lunarDay: number;
+  lunarMonth: number;
+  lunarYear: number;
+  isLeapMonth: boolean;
+  lunarDateFormatted: string;
+  canChiDay: string;
+  canChiMonth: string;
+  canChiYear: string;
+  tietKhi: string;
+  auspiciousDirection: {
+    hyThan: string;
+    taiThan: string;
+  };
+  auspiciousHours: string;
+  nextMoonNote: string;
+  upcomingEvents: LunarEventCountdown[];
+}
+
+export interface GoldItem {
+  name: string;
+  buyVnd: string; // triệu đồng/lượng
+  sellVnd: string;
+  note?: string;
+}
+
+export interface ForexItem {
+  code: string;
+  name: string;
+  rateVnd: number;
+}
+
+export interface FuelItem {
+  name: string;
+  priceVnd: number;
+  unit: string;
+}
+
+export interface VietnamFinanceData {
+  gold: GoldItem[];
+  worldGoldUsdOz: number;
+  forex: ForexItem[];
+  fuel: FuelItem[];
   updatedAt: string;
 }
 
@@ -120,8 +191,11 @@ export interface NewsData {
 }
 
 export interface DigestPayload {
+  edition: 'morning' | 'evening';
   generatedAt: string;
   weather?: WeatherData;
+  lunar?: LunarCalendarData;
+  finance?: VietnamFinanceData;
   lottery?: LotteryData;
   lucky?: LuckyData;
   crypto?: CryptoData;

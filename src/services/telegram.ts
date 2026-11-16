@@ -2,52 +2,65 @@ import cron, { ScheduledTask } from 'node-cron';
 import { addHistoryEntry, loadConfig, saveConfig } from '../config';
 import { buildFullDigest, buildSingleSectionTelegram } from './digest';
 
-let scheduledTask: ScheduledTask | null = null;
+let morningTask: ScheduledTask | null = null;
+let eveningTask: ScheduledTask | null = null;
 let pollingTimer: NodeJS.Timeout | null = null;
 let lastUpdateId = 0;
 let isPollingRequestActive = false;
 
+export function parseChatIds(chatIdRaw: string): string[] {
+  return chatIdRaw
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export async function sendTelegramMessage(
   botToken: string,
-  chatId: string,
+  chatIdRaw: string,
   htmlText: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!botToken || !chatId) {
+): Promise<{ ok: boolean; error?: string; sentCount?: number }> {
+  const chatIds = parseChatIds(chatIdRaw);
+  if (!botToken || chatIds.length === 0) {
     return {
       ok: false,
       error: 'Thiếu Telegram Bot Token hoặc Chat ID. Vui lòng cấu hình trên Dashboard.'
     };
   }
 
-  try {
-    const url = `https://api.telegram.org/bot${botToken.trim()}/sendMessage`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId.trim(),
-        text: htmlText,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true
-      }),
-      signal: AbortSignal.timeout(10000)
-    });
+  let successCount = 0;
+  let lastError = '';
 
-    const data: any = await res.json();
-    if (!res.ok || !data.ok) {
-      return {
-        ok: false,
-        error: data.description || `Lỗi Telegram HTTP ${res.status}`
-      };
+  for (const chatId of chatIds) {
+    try {
+      const url = `https://api.telegram.org/bot${botToken.trim()}/sendMessage`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: htmlText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const data: any = await res.json();
+      if (!res.ok || !data.ok) {
+        lastError = data.description || `Lỗi Telegram HTTP ${res.status} (Chat ID: ${chatId})`;
+      } else {
+        successCount++;
+      }
+    } catch (err: any) {
+      lastError = err?.message || `Không thể kết nối tới máy chủ Telegram (Chat ID: ${chatId})`;
     }
-
-    return { ok: true };
-  } catch (err: any) {
-    return {
-      ok: false,
-      error: err?.message || 'Không thể kết nối tới máy chủ Telegram'
-    };
   }
+
+  if (successCount > 0) {
+    return { ok: true, sentCount: successCount };
+  }
+  return { ok: false, error: lastError };
 }
 
 export async function verifyTelegramBot(botToken: string): Promise<{
@@ -121,56 +134,78 @@ export async function detectRecentChatIds(botToken: string): Promise<{
 }
 
 export function restartScheduler(): void {
-  if (scheduledTask) {
-    scheduledTask.stop();
-    scheduledTask = null;
+  if (morningTask) {
+    morningTask.stop();
+    morningTask = null;
+  }
+  if (eveningTask) {
+    eveningTask.stop();
+    eveningTask = null;
   }
 
   const config = loadConfig();
-  if (!config.scheduleEnabled || !config.scheduleTime) {
-    console.log('⏸️ Lịch gửi tự động đang tắt.');
-    return;
-  }
 
-  const [hourStr, minuteStr] = config.scheduleTime.split(':');
-  const hour = Number(hourStr);
-  const minute = Number(minuteStr);
-
-  if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    console.warn('⚠️ Giờ hẹn không hợp lệ:', config.scheduleTime);
-    return;
-  }
-
-  const cronExpr = `${minute} ${hour} * * *`;
-  scheduledTask = cron.schedule(
-    cronExpr,
-    async () => {
-      const latestConfig = loadConfig();
-      if (!latestConfig.telegramBotToken || !latestConfig.telegramChatId) {
-        return;
-      }
-      console.log(`⏰ Đang gửi bản tin tự động lúc ${latestConfig.scheduleTime}...`);
-      const digest = await buildFullDigest(latestConfig);
-      const res = await sendTelegramMessage(
-        latestConfig.telegramBotToken,
-        latestConfig.telegramChatId,
-        digest.telegramHtml
+  if (config.scheduleEnabled && config.scheduleTime) {
+    const [hourStr, minuteStr] = config.scheduleTime.split(':');
+    const hour = Number(hourStr);
+    const minute = Number(minuteStr);
+    if (!isNaN(hour) && !isNaN(minute)) {
+      morningTask = cron.schedule(
+        `${minute} ${hour} * * *`,
+        async () => {
+          const latestConfig = loadConfig();
+          if (!latestConfig.telegramBotToken || !latestConfig.telegramChatId) return;
+          const digest = await buildFullDigest(latestConfig, 'morning');
+          const res = await sendTelegramMessage(
+            latestConfig.telegramBotToken,
+            latestConfig.telegramChatId,
+            digest.telegramHtml
+          );
+          addHistoryEntry({
+            type: 'scheduled',
+            section: 'all',
+            chatId: latestConfig.telegramChatId,
+            success: res.ok,
+            error: res.error,
+            previewSnippet: `Bản tin Sáng định kỳ (${latestConfig.scheduleTime})`
+          });
+        },
+        { timezone: config.timezone || 'Asia/Ho_Chi_Minh' }
       );
-      addHistoryEntry({
-        type: 'scheduled',
-        section: 'all',
-        chatId: latestConfig.telegramChatId,
-        success: res.ok,
-        error: res.error,
-        previewSnippet: `Bản tin định kỳ lúc ${latestConfig.scheduleTime}`
-      });
-    },
-    {
-      timezone: config.timezone || 'Asia/Ho_Chi_Minh'
+      console.log(`✅ Đã đặt lịch Bản tin Sáng lúc ${config.scheduleTime}`);
     }
-  );
+  }
 
-  console.log(`✅ Đã đặt lịch tự động gửi Telegram hàng ngày lúc ${config.scheduleTime} (${config.timezone})`);
+  if (config.eveningScheduleEnabled && config.eveningScheduleTime) {
+    const [hourStr, minuteStr] = config.eveningScheduleTime.split(':');
+    const hour = Number(hourStr);
+    const minute = Number(minuteStr);
+    if (!isNaN(hour) && !isNaN(minute)) {
+      eveningTask = cron.schedule(
+        `${minute} ${hour} * * *`,
+        async () => {
+          const latestConfig = loadConfig();
+          if (!latestConfig.telegramBotToken || !latestConfig.telegramChatId) return;
+          const digest = await buildFullDigest(latestConfig, 'evening');
+          const res = await sendTelegramMessage(
+            latestConfig.telegramBotToken,
+            latestConfig.telegramChatId,
+            digest.telegramHtml
+          );
+          addHistoryEntry({
+            type: 'scheduled',
+            section: 'all',
+            chatId: latestConfig.telegramChatId,
+            success: res.ok,
+            error: res.error,
+            previewSnippet: `Bản tin Tối định kỳ (${latestConfig.eveningScheduleTime})`
+          });
+        },
+        { timezone: config.timezone || 'Asia/Ho_Chi_Minh' }
+      );
+      console.log(`✅ Đã đặt lịch Bản tin Tối lúc ${config.eveningScheduleTime}`);
+    }
+  }
 }
 
 async function pollBotUpdatesOnce() {
@@ -200,7 +235,6 @@ async function pollBotUpdatesOnce() {
       const chatId = String(msg.chat.id);
       const text = String(msg.text).trim().toLowerCase();
 
-      // Auto-save Chat ID if config doesn't have one yet!
       if (!config.telegramChatId) {
         config.telegramChatId = chatId;
         saveConfig(config);
@@ -209,14 +243,17 @@ async function pollBotUpdatesOnce() {
       if (text.startsWith('/start') || text.startsWith('/help')) {
         const welcomeHtml = [
           `👋 <b>Xin chào! Tôi là Trợ lý Bản Tin Hàng Ngày của bạn.</b>`,
-          `🆔 Chat ID của bạn là: <code>${chatId}</code> <i>(đã sẵn sàng nhận thông báo)</i>`,
+          `🆔 Chat ID của bạn là: <code>${chatId}</code>`,
+          `🌐 <b>Dashboard Online / Mini App:</b> <a href="https://vanquan34.github.io/telegram-daily-digest-bot/">Mở Bảng Điều Khiển</a>`,
           ``,
           `📌 <b>Các lệnh tra cứu nhanh:</b>`,
-          `• /all hoặc /bantin — Nhận toàn bộ bản tin tổng hợp hôm nay`,
-          `• /thoitiet — Xem thời tiết hôm nay (${config.weather.cityName})`,
-          `• /xoso — Kết quả Xổ số miền Bắc hôm qua`,
+          `• /all hoặc /bantin — Nhận toàn bộ bản tin tổng hợp`,
+          `• /licham — Xem Lịch Âm Dương, Giờ hoàng đạo & Hướng xuất hành`,
+          `• /giavang — Xem Giá Vàng SJC, Nhẫn 9999, Tỷ giá & Giá Xăng`,
+          `• /thoitiet — Xem Thời tiết & Chỉ số Bụi mịn AQI (${config.weather.cityName})`,
+          `• /xoso — Kết quả Xổ số miền Bắc`,
           `• /mayman — Con số may mắn & tử vi hôm nay`,
-          `• /btc — Giá Bitcoin, ETH, SOL & chỉ số Fear/Greed`,
+          `• /btc — Giá Bitcoin, ETH, SOL & Fear/Greed Index`,
           `• /tintuc — Tin tức thế giới nổi bật mới nhất`
         ].join('\n');
         await sendTelegramMessage(config.telegramBotToken, chatId, welcomeHtml);
@@ -231,6 +268,12 @@ async function pollBotUpdatesOnce() {
           error: r.error,
           previewSnippet: 'Lệnh /all từ Telegram'
         });
+      } else if (text.startsWith('/licham')) {
+        const html = await buildSingleSectionTelegram('lunar', config);
+        await sendTelegramMessage(config.telegramBotToken, chatId, html);
+      } else if (text.startsWith('/giavang') || text.startsWith('/tygia') || text.startsWith('/xang')) {
+        const html = await buildSingleSectionTelegram('finance', config);
+        await sendTelegramMessage(config.telegramBotToken, chatId, html);
       } else if (text.startsWith('/thoitiet')) {
         const html = await buildSingleSectionTelegram('weather', config);
         await sendTelegramMessage(config.telegramBotToken, chatId, html);
@@ -249,7 +292,7 @@ async function pollBotUpdatesOnce() {
       }
     }
   } catch {
-    // Ignore transient network errors during background polling
+    // Ignore transient network errors
   } finally {
     isPollingRequestActive = false;
   }

@@ -1,6 +1,19 @@
+const DEFAULT_CITY_PRESETS = [
+  { id: 'hanoi', name: 'Hà Nội', lat: 21.0285, lon: 105.8542 },
+  { id: 'hcm', name: 'TP. Hồ Chí Minh', lat: 10.8231, lon: 106.6297 },
+  { id: 'danang', name: 'Đà Nẵng', lat: 16.0544, lon: 108.2022 },
+  { id: 'haiphong', name: 'Hải Phòng', lat: 20.8449, lon: 106.6881 },
+  { id: 'cantho', name: 'Cần Thơ', lat: 10.0452, lon: 105.7469 },
+  { id: 'nhatrang', name: 'Nha Trang', lat: 12.2388, lon: 109.1967 },
+  { id: 'dalat', name: 'Đà Lạt', lat: 11.9404, lon: 108.4583 },
+  { id: 'hue', name: 'Huế', lat: 16.4637, lon: 107.5909 }
+];
+
 let currentConfig = null;
-let cityPresets = [];
+let cityPresets = DEFAULT_CITY_PRESETS;
 let latestDigest = null;
+let currentEdition = 'morning';
+let isStaticHost = false;
 
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
@@ -26,64 +39,143 @@ function toggleTokenVisibility() {
   input.type = input.type === 'password' ? 'text' : 'password';
 }
 
+function switchEdition(edition) {
+  currentEdition = edition;
+  const btnM = document.getElementById('btnEditionMorning');
+  const btnE = document.getElementById('btnEditionEvening');
+  if (edition === 'morning') {
+    btnM.className = 'px-2.5 py-1.5 rounded-md font-medium bg-sky-600 text-white transition';
+    btnE.className = 'px-2.5 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition';
+  } else {
+    btnE.className = 'px-2.5 py-1.5 rounded-md font-medium bg-indigo-600 text-white transition';
+    btnM.className = 'px-2.5 py-1.5 rounded-md font-medium text-slate-300 hover:text-white transition';
+  }
+  loadPreview(true);
+}
+
 async function initApp() {
-  await loadConfigFromServer();
+  // Initialize Telegram Mini App SDK if opened inside Telegram
+  if (window.Telegram && window.Telegram.WebApp) {
+    try {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    } catch {
+      // ignore
+    }
+  }
+
+  await loadConfigFromServerOrLocal();
   await Promise.all([loadPreview(false), loadHistory()]);
 }
 
-async function loadConfigFromServer() {
+function getLocalStoredConfig() {
   try {
-    const res = await fetch('/api/config');
-    const data = await res.json();
-    currentConfig = data.config;
-    cityPresets = data.cityPresets || [];
-
-    // Populate City Select
-    const citySelect = document.getElementById('selectCityPreset');
-    citySelect.innerHTML = cityPresets
-      .map(
-        (c) =>
-          `<option value="${c.id}" ${
-            c.name === currentConfig.weather.cityName ? 'selected' : ''
-          }>${c.name}</option>`
-      )
-      .join('');
-
-    // Fill inputs
-    document.getElementById('inputBotToken').value = currentConfig.telegramBotToken || '';
-    document.getElementById('inputChatId').value = currentConfig.telegramChatId || '';
-    document.getElementById('inputScheduleTime').value = currentConfig.scheduleTime || '07:30';
-    document.getElementById('chkScheduleEnabled').checked = !!currentConfig.scheduleEnabled;
-    document.getElementById('chkInteractiveBot').checked = !!currentConfig.enableInteractiveBot;
-
-    document.getElementById('chkWeather').checked = !!currentConfig.weather.enabled;
-    document.getElementById('chkLottery').checked = !!currentConfig.lottery.enabled;
-    document.getElementById('chkLucky').checked = !!currentConfig.lucky.enabled;
-    document.getElementById('chkCrypto').checked = !!currentConfig.crypto.enabled;
-    document.getElementById('chkNews').checked = !!currentConfig.news.enabled;
-
-    document.getElementById('selectLuckyMode').value = currentConfig.lucky.mode || 'personalized';
-    document.getElementById('inputUserName').value = currentConfig.lucky.userName || 'Bạn';
-    document.getElementById('inputBirthDate').value = currentConfig.lucky.birthDate || '1998-08-18';
-
-    updateScheduleBadge();
-  } catch (err) {
-    showToast('Không thể tải cấu hình từ server', 'error');
+    const raw = localStorage.getItem('tg_digest_config_v2');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
   }
+}
+
+function saveLocalStoredConfig(cfg) {
+  try {
+    localStorage.setItem('tg_digest_config_v2', JSON.stringify(cfg));
+  } catch {
+    // ignore
+  }
+}
+
+async function loadConfigFromServerOrLocal() {
+  const localSaved = getLocalStoredConfig();
+  try {
+    const res = await fetch('./api/config', { signal: AbortSignal.timeout(2500) });
+    if (!res.ok) throw new Error('No local backend');
+    const data = await res.json();
+    currentConfig = {
+      ...data.config,
+      telegramBotToken: data.config.telegramBotToken || localSaved.telegramBotToken || '',
+      telegramChatId: data.config.telegramChatId || localSaved.telegramChatId || ''
+    };
+    cityPresets = data.cityPresets || DEFAULT_CITY_PRESETS;
+    isStaticHost = false;
+    document.getElementById('modeBadge').textContent = '🖥️ Local Server';
+  } catch {
+    // Running on GitHub Pages / Static Cloud Mode!
+    isStaticHost = true;
+    document.getElementById('modeBadge').textContent = '☁️ GitHub Pages Cloud';
+    currentConfig = {
+      telegramBotToken: localSaved.telegramBotToken || '',
+      telegramChatId: localSaved.telegramChatId || '5134773769',
+      scheduleTime: localSaved.scheduleTime || '07:00',
+      scheduleEnabled: localSaved.scheduleEnabled ?? true,
+      eveningScheduleTime: localSaved.eveningScheduleTime || '21:00',
+      eveningScheduleEnabled: localSaved.eveningScheduleEnabled ?? true,
+      enableInteractiveBot: true,
+      weather: localSaved.weather || {
+        enabled: true,
+        cityName: 'Hà Nội',
+        lat: 21.0285,
+        lon: 105.8542
+      },
+      lunar: localSaved.lunar || { enabled: true },
+      finance: localSaved.finance || { enabled: true },
+      lottery: localSaved.lottery || { enabled: true },
+      lucky: localSaved.lucky || {
+        enabled: true,
+        mode: 'personalized',
+        userName: 'Bạn',
+        birthDate: '1996-04-03'
+      },
+      crypto: localSaved.crypto || { enabled: true, coins: ['BTC', 'ETH', 'SOL', 'BNB'] },
+      news: localSaved.news || {
+        enabled: true,
+        rssUrl: 'https://vnexpress.net/rss/the-gioi.rss',
+        maxItems: 5
+      }
+    };
+  }
+
+  const citySelect = document.getElementById('selectCityPreset');
+  citySelect.innerHTML = cityPresets
+    .map(
+      (c) =>
+        `<option value="${c.id}" ${
+          c.name === currentConfig.weather.cityName ? 'selected' : ''
+        }>${c.name}</option>`
+    )
+    .join('');
+
+  document.getElementById('inputBotToken').value = currentConfig.telegramBotToken || '';
+  document.getElementById('inputChatId').value = currentConfig.telegramChatId || '';
+  document.getElementById('inputScheduleTime').value = currentConfig.scheduleTime || '07:00';
+  document.getElementById('chkScheduleEnabled').checked = !!currentConfig.scheduleEnabled;
+  document.getElementById('inputEveningScheduleTime').value =
+    currentConfig.eveningScheduleTime || '21:00';
+  document.getElementById('chkEveningScheduleEnabled').checked =
+    currentConfig.eveningScheduleEnabled !== false;
+
+  document.getElementById('chkWeather').checked = currentConfig.weather?.enabled !== false;
+  document.getElementById('chkLunar').checked = currentConfig.lunar?.enabled !== false;
+  document.getElementById('chkFinance').checked = currentConfig.finance?.enabled !== false;
+  document.getElementById('chkLottery').checked = currentConfig.lottery?.enabled !== false;
+  document.getElementById('chkLucky').checked = currentConfig.lucky?.enabled !== false;
+  document.getElementById('chkCrypto').checked = currentConfig.crypto?.enabled !== false;
+  document.getElementById('chkNews').checked = currentConfig.news?.enabled !== false;
+
+  document.getElementById('selectLuckyMode').value = currentConfig.lucky?.mode || 'personalized';
+  document.getElementById('inputUserName').value = currentConfig.lucky?.userName || 'Bạn';
+  document.getElementById('inputBirthDate').value = currentConfig.lucky?.birthDate || '1996-04-03';
+
+  updateScheduleBadge();
 }
 
 function updateScheduleBadge() {
   const badge = document.getElementById('scheduleBadge');
   if (!currentConfig) return;
-  if (currentConfig.scheduleEnabled) {
-    badge.className =
-      'text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-    badge.textContent = `⏰ Hẹn giờ: ${currentConfig.scheduleTime} hàng ngày`;
-  } else {
-    badge.className =
-      'text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
-    badge.textContent = '⏸️ Đang tắt hẹn giờ';
-  }
+  const parts = [];
+  if (currentConfig.scheduleEnabled) parts.push(`Sáng ${currentConfig.scheduleTime}`);
+  if (currentConfig.eveningScheduleEnabled) parts.push(`Tối ${currentConfig.eveningScheduleTime}`);
+  badge.textContent = parts.length ? `⏰ ${parts.join(' • ')}` : '⏸️ Đang tắt hẹn giờ';
 }
 
 function onCityPresetChange() {
@@ -103,14 +195,22 @@ function collectConfigFromForm() {
   return {
     telegramBotToken: document.getElementById('inputBotToken').value.trim(),
     telegramChatId: document.getElementById('inputChatId').value.trim(),
-    scheduleTime: document.getElementById('inputScheduleTime').value || '07:30',
+    scheduleTime: document.getElementById('inputScheduleTime').value || '07:00',
     scheduleEnabled: document.getElementById('chkScheduleEnabled').checked,
-    enableInteractiveBot: document.getElementById('chkInteractiveBot').checked,
+    eveningScheduleTime: document.getElementById('inputEveningScheduleTime').value || '21:00',
+    eveningScheduleEnabled: document.getElementById('chkEveningScheduleEnabled').checked,
+    enableInteractiveBot: true,
     weather: {
       enabled: document.getElementById('chkWeather').checked,
       cityName: foundCity ? foundCity.name : 'Hà Nội',
       lat: foundCity ? foundCity.lat : 21.0285,
       lon: foundCity ? foundCity.lon : 105.8542
+    },
+    lunar: {
+      enabled: document.getElementById('chkLunar').checked
+    },
+    finance: {
+      enabled: document.getElementById('chkFinance').checked
     },
     lottery: {
       enabled: document.getElementById('chkLottery').checked
@@ -119,7 +219,7 @@ function collectConfigFromForm() {
       enabled: document.getElementById('chkLucky').checked,
       mode: document.getElementById('selectLuckyMode').value,
       userName: document.getElementById('inputUserName').value.trim() || 'Bạn',
-      birthDate: document.getElementById('inputBirthDate').value || '1998-08-18'
+      birthDate: document.getElementById('inputBirthDate').value || '1996-04-03'
     },
     crypto: {
       enabled: document.getElementById('chkCrypto').checked,
@@ -135,50 +235,54 @@ function collectConfigFromForm() {
 
 async function saveConfiguration() {
   const payload = collectConfigFromForm();
-  try {
-    const res = await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.ok) {
-      currentConfig = data.config;
-      updateScheduleBadge();
-      showToast('✅ Đã lưu cấu hình và cập nhật bản tin!', 'success');
-      await loadPreview(false);
-    } else {
-      showToast(`❌ Lỗi: ${data.error}`, 'error');
+  currentConfig = payload;
+  saveLocalStoredConfig(payload);
+  updateScheduleBadge();
+
+  if (!isStaticHost) {
+    try {
+      const res = await fetch('./api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+      }
+    } catch {
+      // fallback to localStorage
     }
-  } catch (err) {
-    showToast('❌ Không thể lưu cấu hình', 'error');
   }
+
+  showToast('✅ Đã lưu cấu hình và cập nhật dữ liệu mới nhất!', 'success');
+  await loadPreview(false);
 }
 
 async function verifyBotToken() {
   const botToken = document.getElementById('inputBotToken').value.trim();
+  if (!botToken) {
+    showToast('⚠️ Vui lòng nhập Bot Token trước', 'error');
+    return;
+  }
   const pill = document.getElementById('botStatusPill');
   pill.textContent = 'Đang kiểm tra...';
   try {
-    const res = await fetch('/api/telegram/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ botToken })
-    });
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
     const data = await res.json();
-    if (data.ok) {
+    if (data.ok && data.result) {
       pill.className =
         'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-      pill.textContent = `🟢 @${data.username} (${data.botName})`;
-      showToast(`✅ Kết nối thành công với Bot <b>@${data.username}</b>!`, 'success');
+      pill.textContent = `🟢 @${data.result.username}`;
+      showToast(`✅ Kết nối thành công với Bot <b>@${data.result.username}</b>!`, 'success');
     } else {
       pill.className =
         'text-xs px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30';
       pill.textContent = '🔴 Token lỗi';
-      showToast(`❌ ${data.error}`, 'error');
+      showToast(`❌ Token không hợp lệ: ${data.description || ''}`, 'error');
     }
   } catch {
-    showToast('❌ Không thể kiểm tra Bot Token', 'error');
+    showToast('❌ Không thể kết nối Telegram API', 'error');
   }
 }
 
@@ -188,27 +292,44 @@ async function detectChatId() {
   box.classList.remove('hidden');
   box.innerHTML = `<span class="text-slate-400">Đang tìm tin nhắn gửi tới Bot...</span>`;
 
+  if (!botToken) {
+    box.innerHTML = `<span class="text-rose-400">❌ Vui lòng nhập Bot Token ở ô phía trên trước.</span>`;
+    return;
+  }
+
   try {
-    const res = await fetch('/api/telegram/detect-chats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ botToken })
-    });
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates?limit=20`);
     const data = await res.json();
     if (!data.ok) {
-      box.innerHTML = `<span class="text-rose-400">❌ ${data.error}</span>`;
-      return;
-    }
-    if (!data.chats || data.chats.length === 0) {
-      box.innerHTML = `<span class="text-amber-300">⚠️ Chưa thấy cuộc trò chuyện nào. Hãy mở Telegram, tìm Bot của bạn và bấm <b>/start</b> rồi thử lại!</span>`;
+      box.innerHTML = `<span class="text-rose-400">❌ ${data.description || 'Token lỗi'}</span>`;
       return;
     }
 
-    // Auto-select first chat ID
-    document.getElementById('inputChatId').value = data.chats[0].id;
+    const map = new Map();
+    for (const upd of data.result || []) {
+      const msg = upd.message || upd.channel_post || upd.my_chat_member;
+      const chat = msg?.chat;
+      if (chat && chat.id) {
+        const idStr = String(chat.id);
+        const title =
+          chat.title ||
+          [chat.first_name, chat.last_name].filter(Boolean).join(' ') ||
+          chat.username ||
+          idStr;
+        map.set(idStr, { id: idStr, title: `${title} (${chat.type})` });
+      }
+    }
+
+    const chats = Array.from(map.values());
+    if (chats.length === 0) {
+      box.innerHTML = `<span class="text-amber-300">⚠️ Chưa thấy tin nhắn mới. Hãy nhắn <b>/start</b> cho Bot trên Telegram rồi bấm lại nút này!</span>`;
+      return;
+    }
+
+    document.getElementById('inputChatId').value = chats.map((c) => c.id).join(', ');
     box.innerHTML =
-      `<div class="text-emerald-300 font-medium mb-1">✅ Đã tìm thấy Chat ID (bấm để chọn):</div>` +
-      data.chats
+      `<div class="text-emerald-300 font-medium mb-1">✅ Đã tìm thấy Chat ID (bấm để thêm/chọn):</div>` +
+      chats
         .map(
           (c) =>
             `<button type="button" onclick="selectDetectedChat('${c.id}')" class="mr-2 mb-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-sky-500/20 border border-slate-700 text-slate-200">
@@ -216,15 +337,22 @@ async function detectChatId() {
             </button>`
         )
         .join('');
-    showToast(`✅ Đã tự động điền Chat ID: <b>${data.chats[0].id}</b>`, 'success');
+    showToast(`✅ Đã điền Chat ID tự động!`, 'success');
   } catch {
-    box.innerHTML = `<span class="text-rose-400">❌ Lỗi kết nối khi dò Chat ID</span>`;
+    box.innerHTML = `<span class="text-rose-400">❌ Lỗi khi dò Chat ID</span>`;
   }
 }
 
 function selectDetectedChat(id) {
-  document.getElementById('inputChatId').value = id;
-  showToast(`Đã chọn Chat ID: <b>${id}</b>`, 'info');
+  const input = document.getElementById('inputChatId');
+  const existing = input.value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!existing.includes(id)) {
+    existing.push(id);
+  }
+  input.value = existing.join(', ');
 }
 
 async function loadPreview(notify = false) {
@@ -232,29 +360,116 @@ async function loadPreview(notify = false) {
   btn.disabled = true;
   btn.innerHTML = `<span>⏳</span> Đang tải...`;
   try {
-    const res = await fetch('/api/preview');
-    const data = await res.json();
-    if (data.ok && data.digest) {
-      latestDigest = data.digest;
-      renderDigestCards(data.digest);
-      document.getElementById('telegramPreviewBox').innerHTML = data.digest.telegramHtml;
-      if (notify) {
-        showToast('🔄 Đã làm mới toàn bộ dữ liệu trực tiếp!', 'info');
+    if (!isStaticHost) {
+      const res = await fetch(`./api/preview?edition=${currentEdition}`);
+      const data = await res.json();
+      if (data.ok && data.digest) {
+        latestDigest = data.digest;
+        renderDigestCards(data.digest);
+        document.getElementById('telegramPreviewBox').innerHTML = data.digest.telegramHtml;
+        if (notify) showToast('🔄 Đã làm mới toàn bộ dữ liệu trực tiếp!', 'info');
+        return;
       }
     }
+
+    // Static GitHub Pages Mode: load latest-digest.json snapshot AND refresh live Weather + AQI + Crypto directly in browser!
+    const snapRes = await fetch('./latest-digest.json');
+    const snapData = await snapRes.json();
+    const digest = snapData.digest;
+
+    // Live browser refresh for Weather + AQI + Crypto so GitHub Pages is always real-time!
+    await refreshBrowserLiveMetrics(digest);
+
+    latestDigest = digest;
+    renderDigestCards(digest);
+    document.getElementById('telegramPreviewBox').innerHTML = digest.telegramHtml;
+    if (notify) showToast('🔄 Đã cập nhật dữ liệu thời gian thực trên Cloud!', 'info');
   } catch (err) {
-    showToast('❌ Lỗi khi tải bản tin xem trước', 'error');
+    showToast('❌ Không thể tải dữ liệu xem trước', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span>🔄</span> Làm mới dữ liệu`;
+    btn.innerHTML = `<span>🔄</span> Làm mới`;
+  }
+}
+
+async function refreshBrowserLiveMetrics(digest) {
+  const cfg = collectConfigFromForm();
+  try {
+    // 1. Live Weather + AQI from Open-Meteo (CORS-enabled)
+    const [wRes, aqiRes] = await Promise.all([
+      fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${cfg.weather.lat}&longitude=${cfg.weather.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,uv_index_max,precipitation_probability_max&timezone=Asia%2FHo_Chi_Minh&forecast_days=1`
+      ),
+      fetch(
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${cfg.weather.lat}&longitude=${cfg.weather.lon}&current=us_aqi,pm10,pm2_5&timezone=Asia%2FHo_Chi_Minh`
+      )
+    ]);
+    if (wRes.ok && digest.weather) {
+      const wJson = await wRes.json();
+      digest.weather.cityName = cfg.weather.cityName;
+      digest.weather.currentTemp = Number(wJson.current.temperature_2m);
+      digest.weather.feelsLike = Number(wJson.current.apparent_temperature);
+      digest.weather.humidity = Number(wJson.current.relative_humidity_2m);
+      digest.weather.windSpeed = Number(wJson.current.wind_speed_10m);
+      digest.weather.minTemp = Number(wJson.daily.temperature_2m_min[0]);
+      digest.weather.maxTemp = Number(wJson.daily.temperature_2m_max[0]);
+      digest.weather.rainProbability = Number(wJson.daily.precipitation_probability_max[0] || 0);
+      digest.weather.uvIndex = Number(wJson.daily.uv_index_max[0] || 5);
+    }
+    if (aqiRes.ok && digest.weather && digest.weather.airQuality) {
+      const aJson = await aqiRes.json();
+      const aqi = Math.round(Number(aJson.current.us_aqi || 60));
+      digest.weather.airQuality.aqi = aqi;
+      digest.weather.airQuality.pm25 = Number(Number(aJson.current.pm2_5 || 20).toFixed(1));
+      digest.weather.airQuality.pm10 = Number(Number(aJson.current.pm10 || 35).toFixed(1));
+    }
+  } catch {
+    // keep snapshot values
   }
 }
 
 function renderDigestCards(digest) {
-  // 1. Weather
+  // 1. Lunar Calendar Card
+  const lnEl = document.getElementById('cardLunarContent');
+  if (digest.lunar) {
+    const ln = digest.lunar;
+    lnEl.innerHTML = `
+      <div class="flex items-center justify-between bg-rose-500/10 border border-rose-500/25 p-3 rounded-xl">
+        <div>
+          <div class="text-xs text-rose-200/80">Dương lịch: <b>${ln.solarDate}</b></div>
+          <div class="text-sm font-bold text-white mt-0.5">Âm lịch: ${ln.lunarDateFormatted}</div>
+          <div class="text-xs text-rose-300 mt-0.5">Ngày ${ln.canChiDay} • Tháng ${ln.canChiMonth}</div>
+        </div>
+        <div class="text-center px-3 py-1.5 rounded-lg bg-slate-900/80 border border-rose-500/30">
+          <span class="text-[10px] text-slate-400 block uppercase">Âm lịch</span>
+          <span class="text-2xl font-black text-rose-400 font-mono">${ln.lunarDay}/${ln.lunarMonth}</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800">🌿 Tiết khí: <b>${ln.tietKhi}</b></div>
+        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800">🧭 Hỷ Thần: <b>${ln.auspiciousDirection.hyThan}</b></div>
+        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800 col-span-2">💎 Hướng Tài Thần: <b class="text-amber-300">${ln.auspiciousDirection.taiThan}</b></div>
+      </div>
+      <div class="text-xs text-slate-300 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800 space-y-1">
+        <div>🌙 <b>${ln.nextMoonNote}</b></div>
+        ${
+          ln.upcomingEvents?.length
+            ? `<div class="text-[11px] text-slate-400">⏳ Sắp tới: ${ln.upcomingEvents
+                .map((e) => `${e.name} (còn <b class="text-white">${e.daysLeft} ngày</b>)`)
+                .join(' • ')}</div>`
+            : ''
+        }
+      </div>
+    `;
+  } else {
+    lnEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Lịch Âm đang tắt.</p>`;
+  }
+
+  // 2. Weather & AQI Card
   const wEl = document.getElementById('cardWeatherContent');
   if (digest.weather) {
     const w = digest.weather;
+    const aq = w.airQuality;
     wEl.innerHTML = `
       <div class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800">
         <div>
@@ -264,8 +479,22 @@ function renderDigestCards(digest) {
         </div>
         <div class="text-4xl">${w.icon}</div>
       </div>
+      ${
+        aq
+          ? `<div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs">
+              <div>
+                <span class="text-slate-400">Chỉ số không khí (US AQI):</span>
+                <div class="font-bold text-white mt-0.5">${aq.badge} AQI ${aq.aqi} — ${aq.level}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-[11px] text-slate-400 block">Bụi mịn PM2.5</span>
+                <span class="font-mono font-bold text-amber-300">${aq.pm25} µg/m³</span>
+              </div>
+            </div>`
+          : ''
+      }
       <div class="grid grid-cols-2 gap-2 text-xs">
-        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">🌡️ Thấp/Cao: <b>${w.minTemp}° - ${w.maxTemp}°C</b></div>
+        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">🌡️ Biên độ: <b>${w.minTemp}° - ${w.maxTemp}°C</b></div>
         <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">💧 Độ ẩm: <b>${w.humidity}%</b></div>
         <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">🌧️ Khả năng mưa: <b>${w.rainProbability}%</b></div>
         <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">☀️ Chỉ số UV: <b>${w.uvIndex}</b></div>
@@ -278,7 +507,60 @@ function renderDigestCards(digest) {
     wEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Thời tiết đang tắt.</p>`;
   }
 
-  // 2. Lucky
+  // 3. Finance (Gold, Forex, Fuel) Card
+  const fnEl = document.getElementById('cardFinanceContent');
+  if (digest.finance) {
+    const f = digest.finance;
+    fnEl.innerHTML = `
+      <div class="space-y-2">
+        ${f.gold
+          .map(
+            (g) => `
+          <div class="flex items-center justify-between bg-yellow-500/10 border border-yellow-500/25 p-2.5 rounded-xl text-xs">
+            <div>
+              <div class="font-bold text-yellow-300">🪙 ${g.name}</div>
+              <div class="text-[11px] text-slate-400">Đơn vị: ${g.note}</div>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-slate-300">Mua: <b class="text-white">${g.buyVnd}</b></div>
+              <div class="text-slate-300">Bán: <b class="text-emerald-400">${g.sellVnd}</b></div>
+            </div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        ${f.forex
+          .map(
+            (fx) => `
+          <div class="bg-slate-900/50 p-2 rounded-lg border border-slate-800 flex justify-between">
+            <span class="text-slate-400 font-semibold">${fx.code}:</span>
+            <b class="font-mono text-white">${fx.rateVnd.toLocaleString('vi-VN')}₫</b>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs space-y-1">
+        <div class="text-slate-400 font-medium">⛽ Giá bán lẻ xăng dầu Petrolimex:</div>
+        <div class="flex flex-wrap justify-between gap-2 pt-0.5">
+          ${f.fuel
+            .map(
+              (fl) =>
+                `<span>${fl.name}: <b class="text-amber-300 font-mono">${fl.priceVnd.toLocaleString(
+                  'vi-VN'
+                )}₫</b></span>`
+            )
+            .join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    fnEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Giá Vàng & Tài chính đang tắt.</p>`;
+  }
+
+  // 4. Lucky
   const lkEl = document.getElementById('cardLuckyContent');
   if (digest.lucky) {
     const l = digest.lucky;
@@ -309,7 +591,7 @@ function renderDigestCards(digest) {
     lkEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Con số may mắn đang tắt.</p>`;
   }
 
-  // 3. Lottery
+  // 5. Lottery
   const ltEl = document.getElementById('cardLotteryContent');
   if (digest.lottery) {
     const lt = digest.lottery;
@@ -352,7 +634,7 @@ function renderDigestCards(digest) {
     ltEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Xổ số đang tắt.</p>`;
   }
 
-  // 4. Crypto
+  // 6. Crypto
   const crEl = document.getElementById('cardCryptoContent');
   if (digest.crypto) {
     const c = digest.crypto;
@@ -390,7 +672,7 @@ function renderDigestCards(digest) {
       ${
         c.fearAndGreed
           ? `<div class="mt-2 p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs flex items-center justify-between">
-              <span class="text-slate-300">📊 Tâm lý thị trường (Fear & Greed):</span>
+              <span class="text-slate-300">📊 Tâm lý (Fear & Greed):</span>
               <b class="text-orange-300">${c.fearAndGreed.value}/100 — ${c.fearAndGreed.classification}</b>
             </div>`
           : ''
@@ -400,11 +682,11 @@ function renderDigestCards(digest) {
     crEl.innerHTML = `<p class="text-xs text-slate-500">Chuyên mục Crypto đang tắt.</p>`;
   }
 
-  // 5. News
+  // 7. News
   const nwEl = document.getElementById('cardNewsContent');
   if (digest.news && digest.news.items) {
     nwEl.innerHTML = `
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         ${digest.news.items
           .map(
             (item, idx) => `
@@ -428,6 +710,31 @@ function renderDigestCards(digest) {
   }
 }
 
+async function sendDirectTelegramFromBrowser(botToken, chatIdRaw, htmlText) {
+  const chatIds = chatIdRaw
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let okCount = 0;
+  let lastErr = '';
+  for (const cid of chatIds) {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: cid,
+        text: htmlText,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      })
+    });
+    const data = await res.json();
+    if (data.ok) okCount++;
+    else lastErr = data.description || 'Lỗi gửi tin nhắn';
+  }
+  return { ok: okCount > 0, sentCount: okCount, error: lastErr };
+}
+
 async function sendSection(section) {
   const botToken = document.getElementById('inputBotToken').value.trim();
   const chatId = document.getElementById('inputChatId').value.trim();
@@ -441,30 +748,45 @@ async function sendSection(section) {
     return;
   }
 
-  // Save current config first so latest settings are used
-  await fetch('/api/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(collectConfigFromForm())
-  });
-
+  saveLocalStoredConfig(collectConfigFromForm());
   showToast('✈️ Đang đẩy thông báo qua Telegram...', 'info');
-  try {
-    const res = await fetch('/api/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ section, botToken, chatId })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('🎉 Đã gửi thông báo qua Telegram thành công!', 'success');
-      await loadHistory();
-    } else {
-      showToast(`❌ Gửi thất bại: ${data.error}`, 'error');
-      await loadHistory();
+
+  if (!isStaticHost) {
+    try {
+      await fetch('./api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectConfigFromForm())
+      });
+      const res = await fetch('./api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section, edition: currentEdition, botToken, chatId })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(
+          `🎉 Đã đẩy thông báo qua Telegram thành công (${data.sentCount || 1} người nhận)!`,
+          'success'
+        );
+        await loadHistory();
+        return;
+      }
+    } catch {
+      // Fall through to direct browser Telegram send
     }
-  } catch (err) {
-    showToast('❌ Lỗi kết nối khi gửi thông báo Telegram', 'error');
+  }
+
+  // Direct Browser Telegram Send (Works on GitHub Pages without backend!)
+  const textToSend = latestDigest ? latestDigest.telegramHtml : '🌅 Bản tin Telegram Daily Digest';
+  const directRes = await sendDirectTelegramFromBrowser(botToken, chatId, textToSend);
+  if (directRes.ok) {
+    showToast(
+      `🎉 Đã gửi trực tiếp qua Telegram thành công (${directRes.sentCount} người nhận)!`,
+      'success'
+    );
+  } else {
+    showToast(`❌ Gửi thất bại: ${directRes.error}`, 'error');
   }
 }
 
@@ -483,27 +805,14 @@ async function sendCustomMessage() {
     return;
   }
 
-  try {
-    const res = await fetch('/api/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        section: 'custom',
-        customText: `📢 <b>THÔNG BÁO NHANH</b>\n\n${text}`,
-        botToken,
-        chatId
-      })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      input.value = '';
-      showToast('✅ Đã gửi tin nhắn tuỳ chỉnh qua Telegram!', 'success');
-      await loadHistory();
-    } else {
-      showToast(`❌ Gửi thất bại: ${data.error}`, 'error');
-    }
-  } catch {
-    showToast('❌ Lỗi khi gửi tin nhắn', 'error');
+  const customHtml = `📢 <b>THÔNG BÁO NHANH</b>\n\n${text}`;
+  const res = await sendDirectTelegramFromBrowser(botToken, chatId, customHtml);
+  if (res.ok) {
+    input.value = '';
+    showToast('✅ Đã gửi tin nhắn tuỳ chỉnh qua Telegram!', 'success');
+    if (!isStaticHost) await loadHistory();
+  } else {
+    showToast(`❌ Gửi thất bại: ${res.error}`, 'error');
   }
 }
 
@@ -514,8 +823,9 @@ function copyTelegramPreview() {
 }
 
 async function loadHistory() {
+  if (isStaticHost) return;
   try {
-    const res = await fetch('/api/history');
+    const res = await fetch('./api/history');
     const data = await res.json();
     const tbody = document.getElementById('historyTableBody');
     if (!data.history || data.history.length === 0) {
